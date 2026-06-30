@@ -1,1 +1,456 @@
 # HTML-Python-CodeEdictor
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>CodeEdictor</title>
+
+  <!-- Prism -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      padding-left: 180px; 
+      background: #222;
+      color: #fff;
+      font-family: "Microsoft JhengHei", sans-serif;
+      display: flex;
+    }
+		
+    .sidebar {
+      width: 180px;
+      background-color: #111;
+      color: #fff;
+      padding: 20px 10px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+    }
+
+    .sidebar h3 {
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .sidebar button {
+      display: block;
+      width: 100%;
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .sidebar button:hover {
+      background: #444;
+    }
+
+    #resultControls {
+      display: none;
+      margin-top: 20px;
+    }
+
+    #resultControls button {
+      margin-top: 6px;
+      background-color: #2978b5;
+      font-size: 14px;
+    }
+
+    .main-content {
+      padding: 10px;
+      flex: 1;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    select, button {
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover, select:hover {
+      background: #444;
+    }
+
+    .editor-section {
+      position: relative;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      margin-bottom: 10px;
+    }
+
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 16px;
+      padding: 8px 10px;
+    }
+
+    .editor-buttons button {
+      background: #cc4444;
+      border: none;
+      margin-left: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .editor-buttons button.copy-btn {
+      background: #44cc44;
+    }
+
+    .editor-buttons button:hover {
+      filter: brightness(0.8);
+    }
+
+    #codeContainer {
+      position: relative;
+      height: 180px;
+    }
+
+    #htmlEditor {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      color: transparent;
+      caret-color: white;
+      border: none;
+      font-family: monospace;
+      font-size: 14px;
+      resize: vertical;
+      padding: 10px;
+      overflow: auto;
+      z-index: 2;
+    }
+
+    pre#highlighting {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      margin: 0;
+      padding: 10px;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .control-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .control-buttons button {
+      background: #2978b5;
+      border: none;
+      color: white;
+      font-size: 16px;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 3px;
+      user-select: none;
+    }
+
+    .control-buttons button:hover {
+      background: #1f5f85;
+    }
+
+    #preview {
+      border: 1px solid #444;
+      background: white;
+      color: black;
+      height: 300px;
+      width: 100%;
+      position: relative;
+    }
+
+    #preview iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #fullscreenExitBtn {
+      display: none;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 9999;
+      background: #cc4444;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      user-select: none;
+    }
+
+    #fullscreenExitBtn:hover {
+      filter: brightness(0.8);
+    }
+  </style>
+</head>
+<body>
+
+<!-- sidebar -->
+<div class="sidebar">
+  <h3>editor &lt;&gt;</h3>
+  <button id="showResultBtn">project</button>
+  <div id="resultControls">
+    <button id="fullscreenResultBtn">fullscreen</button>
+    <button onclick="runBtn.click()">▶ Run</button>
+    <button onclick="stopBtn.click()">■ Stop</button>
+    <button onclick="resetBtn.click()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- main -->
+<div class="main-content">
+  <div class="top-bar">
+    <label for="languageSelect">language：</label>
+    <select id="languageSelect">
+      <option value="html" selected>HTML</option>
+      <option value="javascript">JavaScript</option>
+      <option value="css">CSS</option>
+      <option value="python">Python</option>
+    </select>
+    <button id="saveBtn">SAVE</button>
+    <button id="downloadBtn">DOWNLOAD</button>
+  </div>
+
+  <div class="editor-section" id="htmlEditorSection">
+    <div class="editor-header">
+      <div id="editorTitle">HTML editor</div>
+      <div class="editor-buttons">
+        <button id="deleteHtmlBtn">delete HTML</button>
+        <button id="copyHtmlBtn" class="copy-btn">copy HTML</button>
+      </div>
+    </div>
+
+    <div id="codeContainer">
+      <textarea id="htmlEditor" spellcheck="false">&lt;h1&gt;Hello HTML&lt;/h1&gt;</textarea>
+      <pre id="highlighting" class="language-html"></pre>
+    </div>
+  </div>
+
+  <div class="control-buttons">
+    <button id="runBtn">▶ Run</button>
+    <button id="stopBtn">■ Stop</button>
+    <button id="resetBtn">↺ Reset</button>
+    <button id="enterFullscreen">⛶ fullscreen</button>
+  </div>
+
+  <div id="preview">
+    <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+  </div>
+</div>
+
+<button id="fullscreenExitBtn">↖ ESC</button>
+
+<!-- Prism.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+<script>
+  const htmlEditor = document.getElementById("htmlEditor");
+  const highlighting = document.getElementById("highlighting");
+  const previewFrame = document.getElementById("previewFrame");
+
+  const runBtn = document.getElementById("runBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const enterFullscreenBtn = document.getElementById("enterFullscreen");
+  const fullscreenExitBtn = document.getElementById("fullscreenExitBtn");
+
+  const saveBtn = document.getElementById("saveBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
+
+  const deleteHtmlBtn = document.getElementById("deleteHtmlBtn");
+  const copyHtmlBtn = document.getElementById("copyHtmlBtn");
+
+  const languageSelect = document.getElementById("languageSelect");
+  const editorTitle = document.getElementById("editorTitle");
+
+  function updateHighlighting() {
+    let code = htmlEditor.value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    highlighting.className = "language-" + languageSelect.value;
+    highlighting.innerHTML = code;
+    Prism.highlightElement(highlighting);
+  }
+
+  htmlEditor.addEventListener("input", updateHighlighting);
+
+  languageSelect.addEventListener("change", () => {
+    const lang = languageSelect.value;
+    updateHighlighting();
+
+    const langMap = {
+      html: ["HTML 編輯器", "刪除 HTML", "複製 HTML"],
+      javascript: ["JavaScript 編輯器", "刪除 JS", "複製 JS"],
+      css: ["CSS 編輯器", "刪除 CSS", "複製 CSS"],
+      python: ["Python 編輯器", "刪除 Python", "複製 Python"],
+    };
+
+    const [title, deleteText, copyText] = langMap[lang];
+    editorTitle.textContent = title;
+    deleteHtmlBtn.textContent = deleteText;
+    copyHtmlBtn.textContent = copyText;
+  });
+
+  saveBtn.addEventListener("click", () => {
+    localStorage.setItem("savedCode", htmlEditor.value);
+    alert("程式碼已儲存");
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    let choice = prompt("要下載什麼？輸入數字：\n1. 程式碼\n2. 成果");
+    if (!choice) return;
+    choice = choice.trim();
+
+    if (choice === "1") {
+      const content = htmlEditor.value;
+      const lang = languageSelect.value;
+      const extMap = { html: "html", javascript: "js", css: "css", python: "py" };
+      const ext = extMap[lang] || "txt";
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `code.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (choice === "2") {
+      if (languageSelect.value !== "html") {
+        alert("只有 HTML 模式可下載成果");
+        return;
+      }
+      const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+      const html = doc.documentElement.outerHTML;
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "preview.html";
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      alert("請輸入1或2");
+    }
+  });
+
+  deleteHtmlBtn.addEventListener("click", () => {
+    htmlEditor.value = "";
+    updateHighlighting();
+  });
+
+  copyHtmlBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(htmlEditor.value).then(() => {
+      alert("程式碼已複製");
+    });
+  });
+
+  runBtn.addEventListener("click", () => {
+    if (languageSelect.value === "html") {
+      const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+      doc.open();
+      doc.write(htmlEditor.value);
+      doc.close();
+    } else {
+      alert("只支援 HTML 即時執行");
+    }
+  });
+
+  stopBtn.addEventListener("click", () => {
+    previewFrame.srcdoc = "";
+  });
+
+  resetBtn.addEventListener("click", () => {
+    const lang = languageSelect.value;
+    const examples = {
+      html: "<h1>Hello HTML</h1>",
+      javascript: "console.log('Hello JavaScript');",
+      css: "body { background-color: #eee; }",
+      python: "print('Hello Python')",
+    };
+    htmlEditor.value = examples[lang] || "";
+    updateHighlighting();
+    stopBtn.click();
+  });
+
+  enterFullscreenBtn.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    }
+  });
+
+  fullscreenExitBtn.addEventListener("click", () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    if (document.fullscreenElement) {
+      fullscreenExitBtn.style.display = "block";
+      enterFullscreenBtn.style.display = "none";
+    } else {
+      fullscreenExitBtn.style.display = "none";
+      enterFullscreenBtn.style.display = "inline-block";
+    }
+  });
+
+  document.getElementById("showResultBtn").addEventListener("click", () => {
+    const resultControls = document.getElementById("resultControls");
+    resultControls.style.display = resultControls.style.display === "block" ? "none" : "block";
+  });
+
+  document.getElementById("fullscreenResultBtn").addEventListener("click", () => {
+    const preview = document.getElementById("preview");
+    if (preview.requestFullscreen) {
+      preview.requestFullscreen();
+    } else {
+      alert("瀏覽器不支援全螢幕 ");
+    }
+  });
+
+      updateHighlighting();
+    </script>
+</body>
+</html>
